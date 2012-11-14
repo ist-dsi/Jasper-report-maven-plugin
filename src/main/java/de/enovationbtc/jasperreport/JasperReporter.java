@@ -21,6 +21,7 @@ import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -40,13 +41,13 @@ import org.apache.maven.plugin.logging.Log;
  * so, it keeps the folder structure in tact.
  * 
  * @goal jasper
- * @phase process-classes
- * @requiresDependencyResolution compile+runtime
+ * @phase compile
+ * @requiresDependencyResolution compile
  */
 public class JasperReporter extends AbstractMojo {
 
     static final String ERROR_JRE_COMPILE_ERROR = "Some Jasper reports could not be compiled. See log above for details.";
-    
+
     /**
      * This is the java compiler used
      * 
@@ -108,7 +109,7 @@ public class JasperReporter extends AbstractMojo {
      * @parameter default-value=4
      */
     private int numberOfThreads;
-    
+
     /**
      * @parameter expression="${project.compileClasspathElements}"
      */
@@ -120,6 +121,8 @@ public class JasperReporter extends AbstractMojo {
     public void execute() throws MojoExecutionException {
 	log = getLog();
 	ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+	String classpath = buildClasspathString(classpathElements);
+	getLog().debug("buildClasspathString() = " + classpath);
 	Thread.currentThread().setContextClassLoader(getClassLoader(classLoader));
 
 	if (outputDirectory.exists() && outputDirectory.listFiles().length > 0) {
@@ -131,8 +134,10 @@ public class JasperReporter extends AbstractMojo {
 	    logConfiguration(log);
 	}
 	checkOutDirWritable(outputDirectory);
+	System.setProperty("jasper.reports.compiler.class", compiler);
+	System.setProperty("jasper.reports.compile.keep.java.file", Boolean.FALSE.toString());
 
-	JRProperties.setProperty(JRProperties.COMPILER_CLASS, compiler);
+	JRProperties.setProperty(JRProperties.COMPILER_CLASSPATH, classpath);
 	JRProperties.setProperty(JRProperties.COMPILER_XML_VALIDATION, xmlValidation);
 
 	List<CompileTask> tasks = generateTasks(sourceDirectory, outputDirectory);
@@ -222,8 +227,8 @@ public class JasperReporter extends AbstractMojo {
 	try {
 	    long t1 = System.currentTimeMillis();
 	    List<Future<Void>> output = Executors.newFixedThreadPool(numberOfThreads).invokeAll(tasks);
-	    long time = (System.currentTimeMillis() - t1);
-	    getLog().info("Generated " + output.size() + " jasper reports in " + (time / 1000.0) + " seconds");
+	    long time = System.currentTimeMillis() - t1;
+	    getLog().info("Generated " + output.size() + " jasper reports in " + time / 1000.0 + " seconds");
 	    checkForExceptions(output);
 	} catch (InterruptedException e) {
 	    log.error("Failed to compile Japser reports: Interrupted!", e);
@@ -243,6 +248,19 @@ public class JasperReporter extends AbstractMojo {
 	}
     }
 
+    protected String buildClasspathString(List classpathElements) {
+	StringBuffer classpath = new StringBuffer();
+	Iterator it = classpathElements.iterator();
+	while (it.hasNext()) {
+	    String cpElement = (String) it.next();
+	    classpath.append(cpElement);
+	    if (it.hasNext()) {
+		classpath.append(File.pathSeparator);
+	    }
+	}
+	return classpath.toString();
+    }
+
     private ClassLoader getClassLoader(ClassLoader classLoader) throws MojoExecutionException {
 	List classpathURLs = new ArrayList();
 
@@ -259,8 +277,7 @@ public class JasperReporter extends AbstractMojo {
 	}
 
 	URL[] urls = (URL[]) classpathURLs.toArray(new URL[classpathURLs.size()]);
-	
-	
+
 	return new URLClassLoader(urls, classLoader);
     }
 
