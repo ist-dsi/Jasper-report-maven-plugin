@@ -139,7 +139,7 @@ public class JasperReporter extends AbstractMojo {
 
 	JRProperties.setProperty(JRProperties.COMPILER_CLASSPATH, classpath);
 	JRProperties.setProperty(JRProperties.COMPILER_XML_VALIDATION, xmlValidation);
-
+	JRProperties.setProperty(JRProperties.COMPILER_TEMP_DIR, "target/");
 	List<CompileTask> tasks = generateTasks(sourceDirectory, outputDirectory);
 
 	if (tasks.isEmpty()) {
