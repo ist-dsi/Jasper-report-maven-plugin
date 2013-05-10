@@ -55,6 +55,14 @@ public class JasperReporter extends AbstractMojo {
      *            default-value="net.sf.jasperreports.engine.design.JRJavacCompiler"
      */
     private String compiler;
+    
+    /**
+     * This is where the compiler will put the temporary files
+     * 
+     * @parameter expression="${jasper.temp.dir}"
+     *            default-value="${project.build.directory}"
+     */
+    private File tempDirectory;
 
     /**
      * This is where the .jasper files are written.
@@ -139,7 +147,7 @@ public class JasperReporter extends AbstractMojo {
 
 	JRProperties.setProperty(JRProperties.COMPILER_CLASSPATH, classpath);
 	JRProperties.setProperty(JRProperties.COMPILER_XML_VALIDATION, xmlValidation);
-	JRProperties.setProperty(JRProperties.COMPILER_TEMP_DIR, "target/");
+	JRProperties.setProperty(JRProperties.COMPILER_TEMP_DIR, tempDirectory.getAbsolutePath());
 	List<CompileTask> tasks = generateTasks(sourceDirectory, outputDirectory);
 
 	if (tasks.isEmpty()) {
